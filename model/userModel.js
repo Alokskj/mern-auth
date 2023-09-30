@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import bcrypt from 'bcryptjs'
-const userSchema = mongoose.Schema({
+const userSchema = new Schema({
   name: {
     type: String,
     required: true,
@@ -10,9 +10,14 @@ const userSchema = mongoose.Schema({
     required: true,
     unique: [true, "Email already exists in DB"],
   },
+  isVerified : {
+    type : Boolean,
+    required : true,
+    default : false
+  },
+  googleId: {type : String},
   password: {
     type: String,
-    required: true,
   },
 },{
     timestamps : true
