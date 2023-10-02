@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
+import listingRoutes from "./routes/listingRoute.js"
+import userRoutes from "./routes/userRoutes.js"
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import { connectDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
@@ -15,7 +17,7 @@ const port = process.env.PORT || 5000;
 connectDB();
 const app = express();
 app.use(cors({
-  origin : 'http://localhost:3000',
+  origin : 'http://localhost:5173',
   methods : 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
 
@@ -29,7 +31,8 @@ app.use(passport.initialize());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
-
+app.use("/api/listing", listingRoutes)
+app.use("/api/user", userRoutes)
 app.get("/", (req, res) => res.json({ message: "server is ready" }));
 
 app.use(notFound);

@@ -1,5 +1,5 @@
 {
-    "paths": {
-      "fallback": "app.js"
-    }
-  }
+  "version": 2,
+  "builds": [{"src": "app.js", "use": "@vercel/node"}],
+  "rewrites": [{ "source": "/(.*)", "destination": "/app.js" }]
+}

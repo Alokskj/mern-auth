@@ -1,14 +1,16 @@
 import passport from "passport";
 import GoogleStrategy from 'passport-google-oauth20'
+import LocalStrategy from 'passport-local'
 import User from "../model/userModel.js";
 import expressAsyncHandler from "express-async-handler";
 
 passport.serializeUser((user,done)=>{
-    done(null, user._id)
+    done(null, user)
 })
-passport.deserializeUser((id, done)=>{
-    done(null, id)
+passport.deserializeUser((user, done)=>{
+    done(null, user)
 })
+
 passport.use(new GoogleStrategy.Strategy({
     clientID : '1011048307889-f2qr131ldpbgak019slfefg4uvfb67mf.apps.googleusercontent.com',
     clientSecret : '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',
@@ -16,7 +18,7 @@ passport.use(new GoogleStrategy.Strategy({
     
 },expressAsyncHandler(async (accessToken,refreshToken,profile,done)=>{
     console.log(profile)
-    const user = await User.findOne({googleId : profile.id})
+    const user = await User.findOne({email : profile.emails[0].value})
     if(user){
           return done(null, user)
     }
@@ -24,7 +26,8 @@ passport.use(new GoogleStrategy.Strategy({
         const newUser = await User.create({
             name: profile.displayName,
             googleId : profile.id,
-            email : profile.emails[0].value
+            email : profile.emails[0].value,
+            isVerified : true
         })
         return done(null, newUser)
 

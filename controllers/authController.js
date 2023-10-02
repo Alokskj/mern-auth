@@ -9,6 +9,10 @@ import OTP from "../model/otpModel.js";
 
 export const registerUser = expressAsyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
+  if(!name || !email || !password){
+    res.status(400);
+    throw new Error("Please provide details");
+  }
   const userExists = await User.findOne({ email });
   if (userExists) {
     res.status(400);
@@ -20,8 +24,8 @@ export const registerUser = expressAsyncHandler(async (req, res) => {
     password,
   });
   if (user) {
-    generateToken(res, user._id);
-    res.status(201).json({ _id: user._id, name: user.name, email: user.email });
+    generateToken(res, user._id,user.tokenVersion);
+    res.status(201).json({ _id: user._id, name: user.name, email: user.email,success : true });
   } else {
     res.status(400);
     throw new Error("Invalid user data");
@@ -34,14 +38,23 @@ export const registerUser = expressAsyncHandler(async (req, res) => {
 
 export const loginUser = expressAsyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  if(!email || !password){
+    res.status(400);
+    throw new Error("Please provide details");
+  }
   const user = await User.findOne({ email });
   if (!user) {
     res.status(400).json({ message: "User is not registered" });
-  } else if (user && (await user.matchPassword(password))) {
-    generateToken(res, user._id);
-    res.status(201).json({ _id: user._id, name: user.name, email: user.email });
+  }
+  else if(!user.password){
+    res.status(201).json({message : "No password,Try social login or forget your password"})
+  }
+  else if (user && (await user.matchPassword(password))) {
+    generateToken(res, user._id,user.tokenVersion);
+    const {_id,name,email,isVerified} = user
+    res.status(201).json({  _id,name,email,isVerified, success : true });
   } else {
-    res.status(401).json({ message: "Invalid email or password" });
+    res.status(401).json({ message: "Invalid password" });
   }
 });
 
@@ -63,12 +76,12 @@ export const logoutUser = expressAsyncHandler(async (req, res) => {
 
 export const getUser = expressAsyncHandler(async (req, res) => {
   const { _id, name, email } = req.user;
-  res.status(200).json({ _id, name, email });
+  res.status(200).json({ _id, name, email,success : true });
 });
 
-// @desc    Get User Info
+// @desc    Generate otp for user verification
 // route    POST /api/auth/generate-otp
-// @access  Private
+// @access  Public
 
 export const generateOtp = expressAsyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -87,11 +100,14 @@ export const generateOtp = expressAsyncHandler(async (req, res) => {
   const deleteOldOtp = await OTP.findOneAndDelete({ email });
   const otp = Math.floor(100000 + Math.random() * 900000);
   const sendOtp = await OTP.create({ email, otp });
-  res.status(201).json({ message: "OTP send successfully" });
+  res.status(201).json({ message: "OTP send successfully", success : true });
 });
+// @desc    verify otp for user verification
+// route    POST /api/auth/verify-otp
+// @access  Public
 
 export const verifyOtp = expressAsyncHandler(async (req, res) => {
-  const { otp, email } = req.body;
+  const { otp, email, password } = req.body;
   if (!otp || !email) {
     res.status(400);
     throw new Error("Please enter the otp and email");
@@ -106,9 +122,35 @@ export const verifyOtp = expressAsyncHandler(async (req, res) => {
     res.status(401);
     throw new Error("Invalid OTP");
   }
-  const verifyUser = await User.findOneAndUpdate(
-    { email },
-    { isVerified: true }
-  );
-  res.status(200).json({ message: "User is verified" });
+  const user = await User.findOne({email})
+  if(password){
+    user.password = password
+    user.tokenVersion++
+  }
+  user.isVerified = true
+  await user.save()
+  res.status(200).json({ message: password ? "password changed successfully":"User is verified",success : true });
 });
+
+
+// @desc    forget user password
+// route    POST /api/auth/forget-password
+// @access  Public
+
+export const forgetPassword = expressAsyncHandler(async (req,res)=>{
+  const {email} = req.body
+  if(!email){
+    res.status(400)
+    throw new Error('Please Enter the email')
+  }
+  const user = await User.findOne({ email });
+  if (!user) {
+    res.status(400);
+    throw new Error("Invaid email or user is not registered");
+  }
+  const deleteOldOtp = await OTP.findOneAndDelete({ email });
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  const sendOtp = await OTP.create({ email, otp });
+  res.status(201).json({ message: "OTP send successfully" ,success : true});
+
+})
